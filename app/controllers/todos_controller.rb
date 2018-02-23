@@ -12,6 +12,7 @@ class TodosController < ApplicationController
   def create
     @todo = Todo.new(todo_params)
     @todo.save
+    render :json => { :id => @todo.id, :title => @todo.title }
   end
 
   def edit
