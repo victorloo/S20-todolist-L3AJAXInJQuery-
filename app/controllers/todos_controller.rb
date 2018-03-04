@@ -1,12 +1,6 @@
 class TodosController < ApplicationController
   def index
-    @todos = Todo.all
-
-    if params[:id]
-      @todo = Todo.find(params[:id])
-    else
-      @todo = Todo.new
-    end
+    @todos = Todo.order("id DESC").limit(10)
   end
 
   def create
@@ -39,6 +33,21 @@ class TodosController < ApplicationController
     # ref: http://api.rubyonrails.org/classes/ActiveRecord/Persistence.html#method-i-toggle
     @todo.toggle!(:done)
     render :json => { :id => @todo.id, :done => @todo.done }
+  end
+
+  def load
+    if params[:current_id]
+      @todos = Todo.where( "id < ?", params[:current_id]).order("id Desc").limit(10)
+      render json: {
+        data: @todos.map do |todo|
+          {
+            id: todo.id,
+            title: todo.title,
+            done: todo.done
+          }
+        end
+      }
+    end
   end
 
   private
