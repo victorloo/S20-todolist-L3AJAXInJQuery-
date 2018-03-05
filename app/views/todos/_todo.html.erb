@@ -1,4 +1,5 @@
-<td class="my-pointer">  
+<td class="my-pointer">
+  <!-- 透過事件驅動發出非同步 POST 請求 -->
   <% if todo.done? %>
     <span class="toggle-todo my-font glyphicon glyphicon-check"></span>
   <% else %>
@@ -7,10 +8,13 @@
 </td>
 <td class="my-title">
   <p class="title my-font">
+    <!-- 在負責文字的 <td> 抽換成一個編輯 todo 的表單。 -->
     <%= todo.title %>
   </p>
 </td>
 <td class="my-operation">
   <span class="edit-todo my-btn my-btn-transparent text-info glyphicon glyphicon-pencil"></span>
+  <!-- 透過事件驅動發出非同步 GET 請求 -->
   <span class="delete-todo my-btn my-btn-transparent text-danger glyphicon glyphicon-trash"></span>
+  <!-- 透過事件驅動發出非同步 DELETE 請求 -->
 </td>

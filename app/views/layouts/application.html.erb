@@ -3,6 +3,9 @@
   <head>
     <title>Ajax Todolist</title>
     <%= csrf_meta_tags %>
+    <!-- 預設驗證用的編碼 -->
+    <!-- CSRF：cross-site request forgery 的縮寫，中文為「跨站請求偽造」，是一種利用「他人」權限去執行網站操作的行為。 -->
+    <!-- 為了防禦 CSRF，rails 內建了一些驗證機制來審核發出請求的來源 -->
 
     <%= stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track': 'reload' %>
     <%= javascript_include_tag 'application', 'data-turbolinks-track': 'reload' %>

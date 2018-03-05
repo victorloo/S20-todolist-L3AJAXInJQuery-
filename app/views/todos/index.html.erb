@@ -13,8 +13,10 @@
         <label>"Add New To-Do"</label>
         <div class="input-group">
           <input type="text_area" id="new-todo" class="form-control">
+          <!-- 輸入欄位設定 id 為 new-todo -->
           <div class="input-group-addon">
             <button id="create-todo" class="my-btn my-btn-transparent">Create</button>
+            <!-- 新增的 create 按鈕設定 id 為 create-todo -->
           </div>
         </div>
       </form>
@@ -25,6 +27,7 @@
       <tbody id="todolist">
         <% @todos.each do |todo| %>
           <tr id="<%= todo.id %>">
+          <!-- 從 todo-<%= todo.id %> 改為 <%= todo.id %>，更容易提取出相關 id -->
             <%= render :partial => "todo", :locals => { :todo => todo } %>
           </tr>
           <% end %>
@@ -32,73 +35,204 @@
     </table>
   </div>
   <h4 id="end" class="text-center"></h4>
+  <!-- 印出 no more todos 訊息 -->
 </div>
 
 <script>
-  //delete
+  // delete
+  // 目標︰在所有帶有 delete-todo class 的 <span> 標籤上設定事件驅動。
+  // 透過事件驅動發出非同步 DELETE 請求
+
+  // 使用 jQuery 選擇器找出所有帶有 delete-todo class 的 HTML elements，
+  // 並透過 jQuery 的 on 方法設定 click 事件
+  // 以下寫法採用 event targeting，讓高層 element 去定位下層 element 會觸發的事件驅動
+
   $("#todolist").on("click", ".delete-todo", function (event) {
+    // on 方法裡，
+    // 第一個資料一樣帶入 click，
+    // 第二個資料帶入 .delete-todo，表示這個事件驅動必須是由帶有 .delete-todo 的網頁元件所觸發，
+    // 最後才是匿名 function。
+
     var id = event.target.parentNode.parentNode.id;
+    // event︰DOM下的event物件，每則event的父類別
+    // target︰觸發事件的物件
+    // 往上走兩層才能找到對應該 todo 的 id
+
+    // 使用 $.ajax 發送非同步的 DELETE 請求
     $.ajax({
-      url: "todos/" + id,
-      method: "DELETE",
-      dataType: "json",
+      url: "todos/" + id, // 請求的網址︰routes→ URI
+      method: "DELETE", // 請求的類型︰routes→ Verb
+      dataType: "json", // 回傳的資料格式
+
+      // 請求成功後要執行的 function
       success: function (data) {
+        // Server 回傳的資料會直接帶入 function 的 data。
+
         $("#" + data['id']).remove();
+        // 將 data 裡的 id 取出，
+        // 接著使用 jQuery 選擇器找出透過 id 找到對應的 todo，
+        // 再用 remove 方法移除該 todo。
       }
     });
   });
 
-  //create
+  // create
+  // 使用 jQuery 選擇器找出 create-todo 為 id 的按鈕，
+  // 並透過 jQuery 的 on 方法設定 click 事件
+
   $("#create-todo").on("click", function (event) {
     event.preventDefault();
+    // 如果 form 裡沒有設定 action，Chrome 瀏覽器就會把 form action 預設成當前網址。
+    // 因此當我們點擊了 create 按鈕發送非同步請求後，因為 create 按鈕在 form 裡面，
+    // 我們同時也觸發了 form action 的請求，因此第一次的請求新增了資料，第二次的請求刷新了畫面。
+    // create 按鈕觸發了我們綁定的事件驅動，而瀏覽器預設 form 內的按鈕被點擊時會執行 form action，
+    // 因此為了防止連續發送兩次請求，加上 event.preventDefault();，將瀏覽器預設的行為取消掉：
+
     $.ajax({
-      url: "todos/",
-      method: "POST",
-      dataType: "json",
+      url: "todos/", // 請求的網址︰routes→ URI
+      method: "POST", // 請求的類型︰routes→ Verb
+      dataType: "json", // 回傳的資料格式
+      
+      // 要新增的 todo 資料
       data: {
         todo: {
           title: $("#new-todo").val()
+          // 使用 jQuery 的 val 方法把輸入欄位裡的值取出來放入一個 todo 的 title 裡，
+          // 再把這個 todo 放入 data 中。
         }
       },
+      // 前端傳出去的是 data，data 裡有一個 todo，
+      // 這個 todo 裡有一組 key-value pair，
+      // key 為 title，value 為輸入欄位的文字；
+      // 只有在這個格式下，
+      // 才能對應到 todos_controller.rb 裡的 todo_params 裡的 params.require(:todo).permit(:title)。
+      // 這個格式，就是原本 form helper 會回傳給 server 的資料格式。
+
+      // 請求成功後要執行的 function
       success: function (data) {
+        // Server 回傳的資料會直接帶入 function 的 data。
+        // 根據回傳的資料新增 todo
+        
         var todo = document.createElement("tr");
+        // 創建 <tr> element 負責該 todo
+        
         todo.id = data["id"];
+        // 設定 <tr> 的 id 為 todo id
+        
         $(todo).html($("#todo-template").html());
+        // 使用 jQuery 選擇器透過 todo-template 取得該樣板，
+        // 接著用 jQuery 的 html 方法將樣板內容取出，
+        
+        // 當 html 方法的括號沒有帶入資料時，即拿出裡面的網頁內容；
+        // 當 html 方法的括號有帶入資料時，即將該資料取代原本的內容。
+
         $(todo).find(".title.my-font").html(data["title"]);
+        // 接著在 <tr> element 上用 html 方法把樣板內容放入。
+
+        // 在 <tr> 使用 jQuery 的 find 方法透過 class 向下查詢負責文字的 element，
+        // 該 element 的 class 內容為 title my-font，
+        // 請從回傳的 data 裡取出 title 透過 html 方法放入該 element 內。
+
+
+        // 因為採用 infinite scrolling，所以不再使用 append 方法將新增的 todo 放入列表末端
+//        $("#todolist").append(todo);
+
         $("#todolist").prepend(todo);
+        // 採用 infinite scrolling
+        // 將 todo 更動為加入 todolist 的最上方。
       }
     });
   });
 
-  //edit
-  $("#todolist").on("click", ".edit-todo", function (event) {
-    var id = event.target.parentNode.parentNode.id;
+  // edit
+  // 透過事件驅動發出非同步 GET 請求
+  // 和 delete 按鈕相同的方式來撰寫 edit 按鈕的事件驅動，
+  // 也就是使用 event targeting 方式，
+  // 把事件驅動設定在 todolist 上並指定對應觸發的網頁元件，
+  // 也就是我們剛在 edit 按鈕設定的 edit-todo class
 
+  $("#todolist").on("click", ".edit-todo", function (event) {
+    // 使用 jQuery 選擇器找出 todolist
+    // 使用 jQuery 的 on 方法，
+    // 第一個資料帶入 click，
+    // 第二個資料帶入 .edit-todo，
+    // 第三個資料是匿名 function
+
+    var id = event.target.parentNode.parentNode.id;
+    // event︰DOM下的event物件，每則event的父類別
+    // target︰觸發事件的物件
+    // 往上走兩層才能找到對應該 todo 的 id
+
+    // 使用 $.ajax 發送非同步的 GET 請求
     $.ajax({
-      url: "todos/" + id + "/edit",
-      method: "GET",
-      dataType: "json",
+      url: "todos/" + id + "/edit", // 請求的網址︰routes→ URI
+      method: "GET", // 請求的類型︰routes→ Verb
+      dataType: "json", // 回傳的資料格式
+
+      // 請求成功後要執行的 function
       success: function (data) {
+        // Server 回傳的資料會直接帶入 function 的 data。
+
         var textColumn = $("#" + data["id"]).find(".my-title");
+        // 使用 jQuery 選擇器找出負責 todo 的 <tr> element，
+        // 再用 find 方法找到下層帶有 my-title class 的 element，
+        // 也就是負責文字的 <td>，取出後放入一個變數 textColumn 裡
+        
         textColumn.html($("#edit-template").html());
+        // 使用 jQuery 選擇器透過 edit-template 取得該樣板，
+        // 接著用 jQuery 的 html 方法將樣板內容取出，
+        // 最後在 textColumn 上用 html 方法把樣板內容放入
+
         textColumn.find(".update-title").val(data["title"]);
-        //update
+        // 在 textColumn 上使用 find 方法透過 .update-title 取得剛加入的編輯表單的輸入欄位，
+        // 將從 server 回傳的 data 裡取出文字透過 val 方法放入其中
+        // input 類型的標籤無法使用 html 方法，必須要用 val 方法來存取值。
+
+  // update
+        // 透過事件驅動發出非同步 PATCH 請求
+        // 目標流程：點擊 edit 按鈕 → 抽換表單 → 點擊 update 按鈕 → 恢復文字欄位
+
         textColumn.on("click", ".update-button", function(updateEvent) {
+          // 使用 jQuery 選擇器找出負責的 todo
+          // 使用 jQuery 的 on 方法，
+          // 第一個資料帶入 click，
+          // 第二個資料帶入 .update-button，
+          // 第三個資料是匿名 function
+
+          // 為了讓事件驅動不會使用到同一個變數，
+          // 請將 update 按鈕事件驅動裡的匿名 function 帶入的資料名稱改為 updateEvent，
+          // 以免和上層事件驅動的 event 起衝突
+
           updateEvent.preventDefault();
+          // 防止瀏覽器預設會驅動 form action 的行為
           
           $.ajax({
-            url: "todos/" + data["id"],
-            method: "PATCH",
-            dataType: "json",
+            url: "todos/" + data["id"], // 請求的網址︰routes→ URI；:id 需要帶入 todo id，我們不需要另外去抓去 id，可以直接從回傳的 data 中取出。
+            method: "PATCH", // 請求的類型︰routes→ Verb；不使用 PUT
+            dataType: "json", // 回傳的資料格式
+
+            // // 要更新的 todo 資料
             data: {
               todo: {
                 title: textColumn.find(".update-title").val()
               }
             },
+
+            // 請求成功後要執行的 function
+            // 把回傳資料的名稱改為 updateData，以免和上層事件驅動的 data 起衝突。
             success: function(updateData) {
+
               var textColumn = $("#" + data["id"]).find(".my-title");
+              // 使用 jQuery 選擇器找出負責 todo 的 <tr> element，
+              // 再用 find 方法找到下層帶有 my-title class 的 element，
+              // 也就是負責文字的 <td>，取出後放入變數 textColumn 裡
+
               textColumn.html('<p class="title my-font"></p>');
+              // 使用 jQuery 的 html 方法帶入一個有 title my-font class 的 p 標籤
+
               textColumn.find('p').html(updateData["title"]);
+              // 在 textColumn 上使用 find 方法透過 p 取得剛加入的 p 標籤，
+              // 再使用 html 方法將回傳資料 updateData 裡的 title 放入其中。
             }
           });
         });
@@ -106,74 +240,175 @@
     });
   });
 
-  //checkbox
-  $("#todolist").on("click", ".toggle-todo", function(event) {
-    var id = event.target.parentNode.parentNode.id;
+  // checkbox
+  // 透過事件驅動發出非同步 POST 請求
+  // 使用和 delete 和 edit 按鈕相同的方式來撰寫 checkbox 的事件驅動，
+  // 也就是使用 event targeting 方式，
+  // 把事件驅動設定在 todolist 上並指定對應觸發的網頁元件，
+  // 也就是我們剛在 checkbox 設定的 toggle-todo class
 
+  $("#todolist").on("click", ".toggle-todo", function(event) {
+    // 使用 jQuery 選擇器找出 todolist
+    // 使用 jQuery 的 on 方法，
+    // 第一個資料帶入 click，
+    // 第二個資料帶入 .toggle-todo，
+    // 第三個資料是匿名 function
+
+    var id = event.target.parentNode.parentNode.id;
+    // event︰DOM下的event物件，每則event的父類別
+    // target︰觸發事件的物件
+    // 往上走兩層才能找到對應該 todo 的 id
+
+    // 使用 $.ajax 發送非同步的 POST 請求
     $.ajax({
-      url: "todos/" + id + "/toggle_check",
-      method: "POST",
-      dataType: "json",
+      url: "todos/" + id + "/toggle_check", // 請求的網址︰routes→ URI；:id 需要帶入 todo id
+      method: "POST", // 請求的類型︰routes→ Verb
+      dataType: "json", // 回傳的資料格式
+
+      // 請求成功後要執行的 function
       success: function (data) {
+        // Server 回傳的資料會直接帶入 function 的 data。
+        // 根據回傳的 done 屬性設定 <span> 的 class
+
         var checkboxColumn = $('#' + data["id"]).find(".my-pointer");
+        // 使用 jQuery 選擇器透過 id 取出負責該 todo 的 <tr>，
+        // 再透過 find 方法帶入 my-pointer class 找到負責 checkbox 的 <td>，
+        // 放入一個 checkboxColumn 變數裡
+
         data["done"] ? checkboxColumn.html('<span class="toggle-todo my-font glyphicon glyphicon-check"></span>') :checkboxColumn.html('<span class="toggle-todo my-font glyphicon glyphicon-unchecked"></span>');
+        // 使用 JavaScript 的 ? 語法，
+        // 根據 data 裡的 done 屬性判斷要新增的 <span> 是「勾選」或「未勾選」的狀態
       }
     });
   });
 
-  //infinite scrolling
+  // infinite scrolling
+  // 在一開始載入的網頁裡，只載入部分的資料，
+  // 當使用者往下滑動到底時，再去載入更多的資料；
+  // 這樣做可以降低第一次的載入的資料量，在一些講究時效性的網頁應用特別實用，如新聞網站或社群媒體。
+
+  // 這次將事件驅動綁定在 window 物件上，並且設定「捲動」事件。
+
   var current_todo_id = <%= @todos.last.id %>;
+  // current_todo_id 來記錄目前最後載入的 id，藉此來判斷之後要從哪個 id 開始取得接續的 10 個 todos。
+
   $(window).on("scroll", function(event) {
+    // 使用 jQuery 選擇器包住 window 物件，
+    // 把 window 物件變成 jQuery 物件
+    // 使用 jQuery 的 on 方法，
+    // 第一個資料帶入 scroll，表示我們要設定是捲動的事件驅動，
+    // 第二筆資料帶入一個匿名 function
+
     if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
+      // window.innerHeight：瀏覽器視窗的高度
+      // window.scrollY：捲動條（scroll bar）的上端位置
+      // document.body.offsetHeight：整個網頁內容的高度
+
+      // 當 window.innerHeight 加上 window.scrollY 會大於 document.body.offsetHeight 時，表示捲動已經到底。
+
+      // 使用 $.ajax 發送非同步的 GET 請求
       $.ajax({
-        url: "/todos/load?current_id=" + current_todo_id,
-        method: "GET",
-        dataType: "json",
+        url: "/todos/load?current_id=" + current_todo_id, // 請求的網址︰routes→ URI；:id 需要帶入 todo id； ?current_id=current_todo_id，將前端最後一筆 todo 的 id 傳給 server
+        method: "GET", // 請求的類型︰routes→ Verb
+        dataType: "json", // 回傳的資料格式
+        
+        // 請求成功後要執行的 function
         success: function(data) {
           var todos = data["data"];
+          // 這次我們在 JSON 外層加了一個 data →→ todos_controller→ def load→ render json:，
+          // 所以我們先要把管理 todos 的陣列取出來放入一個變數 todos 裡
+
           if (todos.length > 0) {
+            // 判斷這個 todos 是否有資料
+
             todos.forEach(function(value, index) {
+              // 撰寫載入 todos 的功能，陣列的 forEach 方法，
+              // 並在 forEach 方法裡帶入匿名 function，
+              // 會從陣列取得該 todo 的兩筆資料：value 和 index
+              // value 和 index 的順序是固定的
+
+              //  todos 載入的功能類似 create action
+              
               var todo = document.createElement("tr");
+              // 創建 <tr> 標籤，放入變數 todo 裡
+
               todo.id = todos[index]["id"];
+              // 透過 index 取得該 todo 的資料，再取得 todo 的 id，放入 todo.id
+
               $(todo).html($("#todo-template").html());
+              // 使用 jQuery 選擇器透過 todo-template 取得該樣板，
+              // 接著用 jQuery 的 html 方法將樣板內容取出，
+              // 再將 todo 轉換成 jQuery 物件用 html 方法將樣板內容放入其中
+
               todos[index]["done"] ? $(todo).find(".my-pointer").html('<span class="toggle-todo my-font glyphicon glyphicon-check"></span>') : $(todo).find(".my-pointer").html('<span class="toggle-todo my-font glyphicon glyphicon-unchecked"></span>');
+              // 使用 index 取出該 todo 的 done 屬性，
+              // 並使用 JavaScript 的 ? 語法根據 done 屬性判斷要新增的 <span> 是「勾選」或「未勾選」的狀態
+
+              // 只要 todo 有使用到 jQuery 方法，
+              // 便將 todo 透過 jQuery 選擇器轉換成 jQuery 物件
 
               $(todo).find(".title.my-font").html(todos[index]["title"]);
+              // 在 todo 使用 jQuery 的 find 方法透過 class 向下查詢負責文字的欄位，
+              // 該 element 的 class 內容為 title my-font，
+              // 請從回傳的 data 裡取出 title 透過 html 方法放入該 element 內
+
               $("#todolist").append(todo);
+              // 使用 jQuery 選擇器找到 todolist，使用 append 方法將新增的 todo 放入列表末端
+
               current_todo_id = todos[index]["id"];
+              // 由於我們已取得接續的資料，請更新 current_todo_id 為當前 id
             });
           } 
           else {
             $("#end").html("No more todo");
+            // 使用 jQuery 選擇器透過 end 取得負責剛新增的 <div> 標籤，
+            // 並透過 html 方法將其內容設定為 no more todos
           }
         }
       });
     }
   });
+  // 如果瀏覽器視窗高度太高，會導致網頁無法觸發「捲動」的事件驅動，
+  // 要解決這個問題有兩個方法，擇一即可：
+  // 將瀏覽器視窗高度縮小，再刷新網頁，就可以觸發「捲動」事件
+  // 提高第一次載入的 todos 數量，讓網頁內容多到瀏覽器視窗出現 scroll bar
 
 </script>
 
 <script type="text/template" id="todo-template">
-  <!--前端 create template，不使用 rails render -->
+  <!-- 設定屬性 type 為 text/template，表示是樣板 -->
+  <!-- 設定屬性 id 為 todo-template，之後我們會透過這個 id 來取用樣板。 -->
+
+  <!-- 直接把想呼叫的 HTML 內容寫在同一個前端頁面 -->
+  <!-- 前端 create template，不使用 rails render -->
   <td class="my-pointer">
+    <!-- 透過事件驅動發出非同步 POST 請求 -->
     <span class="toggle-todo my-font glyphicon glyphicon-unchecked"></span>
   </td>
   <td class="my-title">
     <p class="title my-font"></p>
+    <!-- 在負責文字的 <td> 抽換成一個編輯 todo 的表單。 -->
   </td>
   <td class="my-operation">
     <span class="edit-todo my-btn my-btn-transparent text-info glyphicon glyphicon-pencil"></span>
+    <!-- 透過事件驅動發出非同步 GET 請求 -->
     <span class="delete-todo my-btn my-btn-transparent text-danger glyphicon glyphicon-trash"></span>
+    <!-- 透過事件驅動發出非同步 DELETE 請求 -->
   </td>
 </script>
 
 <script type="text/template" id="edit-template">
+  <!-- 設定屬性 type 為 text/template，表示是樣板 -->
+  <!-- 設定屬性 id 為 edit-template，表示是編輯表單的樣板，之後可透過 id 取用樣板。 -->
+  
   <!--前端 edit form template，不使用 rails render -->
   <form>
     <div class="input-group">
       <input type="text_area" class="update-title form-control">
+      <!-- 替輸入欄位的 <input> 新增 update-title class -->
       <div class="input-group-addon">
         <button class="update-button my-btn my-btn-transparent">Update</button>
+        <!-- 替 update 按鈕的 <input> 新增 update-button class -->
       </div>
     </div>
   </form>
