@@ -9,26 +9,172 @@
 
     <!-- Add new todo -->
     <div class="panel-body">
-    <%= form_for @todo, {class: "my-form", remote: true } do |f| %>
-      <%= f.label "Add New To-Do" %>
-      <div class="input-group">
-        <%= f.text_area :title, :class => "form-control" %>
-        <div class="input-group-addon">
-          <%= f.submit "Create", :class => "my-btn my-btn-transparent" %>
+      <form>
+        <label>"Add New To-Do"</label>
+        <div class="input-group">
+          <input type="text_area" id="new-todo" class="form-control">
+          <div class="input-group-addon">
+            <button id="create-todo" class="my-btn my-btn-transparent">Create</button>
+          </div>
         </div>
-      </div>
-      <% end %>
+      </form>
     </div>
 
     <!-- Todo List -->
     <table class="my-table table table-hover">
       <tbody id="todolist">
         <% @todos.each do |todo| %>
-          <tr id="todo-<%= todo.id %>">
+          <tr id="<%= todo.id %>">
             <%= render :partial => "todo", :locals => { :todo => todo } %>
           </tr>
-        <% end %>
+          <% end %>
       </tbody>
     </table>
   </div>
+  <h4 id="end" class="text-center"></h4>
 </div>
+
+<script>
+  //delete
+  $("#todolist").on("click", ".delete-todo", function (event) {
+    var id = event.target.parentNode.parentNode.id;
+    $.ajax({
+      url: "todos/" + id,
+      method: "DELETE",
+      dataType: "json",
+      success: function (data) {
+        $("#" + data['id']).remove();
+      }
+    });
+  });
+
+  //create
+  $("#create-todo").on("click", function (event) {
+    event.preventDefault();
+    $.ajax({
+      url: "todos/",
+      method: "POST",
+      dataType: "json",
+      data: {
+        todo: {
+          title: $("#new-todo").val()
+        }
+      },
+      success: function (data) {
+        var todo = document.createElement("tr");
+        todo.id = data["id"];
+        $(todo).html($("#todo-template").html());
+        $(todo).find(".title.my-font").html(data["title"]);
+        $("#todolist").prepend(todo);
+      }
+    });
+  });
+
+  //edit
+  $("#todolist").on("click", ".edit-todo", function (event) {
+    var id = event.target.parentNode.parentNode.id;
+
+    $.ajax({
+      url: "todos/" + id + "/edit",
+      method: "GET",
+      dataType: "json",
+      success: function (data) {
+        var textColumn = $("#" + data["id"]).find(".my-title");
+        textColumn.html($("#edit-template").html());
+        textColumn.find(".update-title").val(data["title"]);
+        //update
+        textColumn.on("click", ".update-button", function(updateEvent) {
+          updateEvent.preventDefault();
+          
+          $.ajax({
+            url: "todos/" + data["id"],
+            method: "PATCH",
+            dataType: "json",
+            data: {
+              todo: {
+                title: textColumn.find(".update-title").val()
+              }
+            },
+            success: function(updateData) {
+              var textColumn = $("#" + data["id"]).find(".my-title");
+              textColumn.html('<p class="title my-font"></p>');
+              textColumn.find('p').html(updateData["title"]);
+            }
+          });
+        });
+      }
+    });
+  });
+
+  //checkbox
+  $("#todolist").on("click", ".toggle-todo", function(event) {
+    var id = event.target.parentNode.parentNode.id;
+
+    $.ajax({
+      url: "todos/" + id + "/toggle_check",
+      method: "POST",
+      dataType: "json",
+      success: function (data) {
+        var checkboxColumn = $('#' + data["id"]).find(".my-pointer");
+        data["done"] ? checkboxColumn.html('<span class="toggle-todo my-font glyphicon glyphicon-check"></span>') :checkboxColumn.html('<span class="toggle-todo my-font glyphicon glyphicon-unchecked"></span>');
+      }
+    });
+  });
+
+  //infinite scrolling
+  var current_todo_id = <%= @todos.last.id %>;
+  $(window).on("scroll", function(event) {
+    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
+      $.ajax({
+        url: "/todos/load?current_id=" + current_todo_id,
+        method: "GET",
+        dataType: "json",
+        success: function(data) {
+          var todos = data["data"];
+          if (todos.length > 0) {
+            todos.forEach(function(value, index) {
+              var todo = document.createElement("tr");
+              todo.id = todos[index]["id"];
+              $(todo).html($("#todo-template").html());
+              todos[index]["done"] ? $(todo).find(".my-pointer").html('<span class="toggle-todo my-font glyphicon glyphicon-check"></span>') : $(todo).find(".my-pointer").html('<span class="toggle-todo my-font glyphicon glyphicon-unchecked"></span>');
+
+              $(todo).find(".title.my-font").html(todos[index]["title"]);
+              $("#todolist").append(todo);
+              current_todo_id = todos[index]["id"];
+            });
+          } 
+          else {
+            $("#end").html("No more todo");
+          }
+        }
+      });
+    }
+  });
+
+</script>
+
+<script type="text/template" id="todo-template">
+  <!--前端 create template，不使用 rails render -->
+  <td class="my-pointer">
+    <span class="toggle-todo my-font glyphicon glyphicon-unchecked"></span>
+  </td>
+  <td class="my-title">
+    <p class="title my-font"></p>
+  </td>
+  <td class="my-operation">
+    <span class="edit-todo my-btn my-btn-transparent text-info glyphicon glyphicon-pencil"></span>
+    <span class="delete-todo my-btn my-btn-transparent text-danger glyphicon glyphicon-trash"></span>
+  </td>
+</script>
+
+<script type="text/template" id="edit-template">
+  <!--前端 edit form template，不使用 rails render -->
+  <form>
+    <div class="input-group">
+      <input type="text_area" class="update-title form-control">
+      <div class="input-group-addon">
+        <button class="update-button my-btn my-btn-transparent">Update</button>
+      </div>
+    </div>
+  </form>
+</script>

@@ -5,5 +5,8 @@ Rails.application.routes.draw do
     member do
       post :toggle_check
     end
+    collection do
+      get :load
+    end
   end
 end

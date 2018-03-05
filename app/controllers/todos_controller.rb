@@ -1,31 +1,29 @@
 class TodosController < ApplicationController
   def index
-    @todos = Todo.all
-
-    if params[:id]
-      @todo = Todo.find(params[:id])
-    else
-      @todo = Todo.new
-    end
+    @todos = Todo.order("id DESC").limit(10)
   end
 
   def create
     @todo = Todo.new(todo_params)
     @todo.save
+    render :json => { :id => @todo.id, :title => @todo.title }
   end
 
   def edit
     @todo = Todo.find(params[:id])
+    render :json => { :id => @todo.id, :title => @todo.title }
   end
 
   def update
     @todo = Todo.find(params[:id])
     @todo.update_attributes(todo_params)
+    render :json => { :id => @todo.id, :title => @todo.title }
   end
 
   def destroy
     @todo = Todo.find(params[:id])
     @todo.destroy
+    render :json => { :id => @todo.id }
   end
 
   def toggle_check
@@ -34,6 +32,22 @@ class TodosController < ApplicationController
     # 加上驚歎號表示會直接存入資料庫（否則要另外 save)
     # ref: http://api.rubyonrails.org/classes/ActiveRecord/Persistence.html#method-i-toggle
     @todo.toggle!(:done)
+    render :json => { :id => @todo.id, :done => @todo.done }
+  end
+
+  def load
+    if params[:current_id]
+      @todos = Todo.where( "id < ?", params[:current_id]).order("id Desc").limit(10)
+      render json: {
+        data: @todos.map do |todo|
+          {
+            id: todo.id,
+            title: todo.title,
+            done: todo.done
+          }
+        end
+      }
+    end
   end
 
   private
